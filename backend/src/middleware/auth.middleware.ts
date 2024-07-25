@@ -19,27 +19,29 @@ export const protectedRoute = async (
   res: Response,
   next: NextFunction
 ) => {
-  const cookieJwt = req.cookies.jwt;
+  const { authorization } = req.headers;
   const jwtSecret = process.env.JWT_SECRET as string;
 
   if (!jwtSecret) {
     throw new Error("JWT Secret must be set!");
   }
 
-  if (!cookieJwt) {
+  if (!authorization || !authorization.startsWith("Bearer ")) {
     return res.status(401).json({
       message: "Unauthorized access",
     });
   }
 
-  if (!cookieJwt) {
+  const token = authorization.split(" ")[1];
+
+  if (!token) {
     return res.status(401).json({
       message: "Unauthorized access - No token",
     });
   }
 
   try {
-    const decoded = jwt.verify(cookieJwt, jwtSecret) as DecodedToken;
+    const decoded = jwt.verify(token, jwtSecret) as DecodedToken;
 
     const user = (await User.findById(decoded.id).select("-password")) as IUser;
 

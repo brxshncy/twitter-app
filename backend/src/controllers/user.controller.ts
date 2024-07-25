@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import User from "../models/user.model";
 import mongoose, { ObjectId } from "mongoose";
+import { Notification } from "../models/notification.model";
 
 export const getUserProfile = async (req: Request, res: Response) => {
   try {
@@ -23,9 +24,33 @@ export const getUserProfile = async (req: Request, res: Response) => {
   }
 };
 
-export const getSuggestedUser = async (req: Request, res: Response) => {
+export const getSuggestedUsers = async (req: Request, res: Response) => {
   try {
-  } catch (error) {}
+    const userId = req.user._id;
+    const userFollowedByMe = await User.findById(userId).select("following");
+
+    const users = await User.aggregate([
+      {
+        $match: {
+          _id: { $ne: userId },
+        },
+      },
+      { $sample: { size: 10 } },
+    ]);
+
+    const filteredUsers = users.filter(
+      (user) => !userFollowedByMe?.following.includes(user._id)
+    );
+
+    const suggestedUsers = filteredUsers.slice(0, 4);
+
+    res.status(200).json(suggestedUsers);
+  } catch (error: any) {
+    console.log("Error In getSuggestedUsers", error);
+    res.status(500).json({
+      error: error.message,
+    });
+  }
 };
 
 export const toggleFollowUser = async (req: Request, res: Response) => {
@@ -68,6 +93,13 @@ export const toggleFollowUser = async (req: Request, res: Response) => {
         $push: { following: id },
       });
 
+      const newNotification = new Notification({
+        type: "follow",
+        from: req.user._id,
+        to: userToFollow._id,
+      });
+
+      await newNotification.save();
       res.status(200).json({
         message: "User followed successfully!",
       });

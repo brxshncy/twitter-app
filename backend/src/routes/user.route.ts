@@ -1,6 +1,6 @@
 import express from "express";
 import {
-  getSuggestedUser,
+  getSuggestedUsers,
   getUserProfile,
   toggleFollowUser,
   updateUserProfile,
@@ -10,7 +10,7 @@ import { protectedRoute } from "./../middleware/auth.middleware";
 const userRoutes = express.Router();
 
 userRoutes.get("/profile/:username", protectedRoute, getUserProfile);
-userRoutes.get("/suggested", protectedRoute, getSuggestedUser);
+userRoutes.get("/suggested", protectedRoute, getSuggestedUsers);
 userRoutes.post("/follow/:id", protectedRoute, toggleFollowUser);
 userRoutes.post("/update", protectedRoute, updateUserProfile);
 

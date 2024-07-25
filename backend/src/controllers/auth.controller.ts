@@ -4,20 +4,12 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
-export const generateJwtToken = (
-  id: mongoose.Types.ObjectId,
-  res: Response
-) => {
+export const generateJwtToken = (id: mongoose.Types.ObjectId) => {
   const token = jwt.sign({ id }, process.env.JWT_SECRET as string, {
     expiresIn: "30d",
   });
 
-  res.cookie("jwt", token, {
-    maxAge: (15 * 24 * 60) & (60 * 1000),
-    httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODe_ENV !== "development",
-  });
+  return token;
 };
 
 export const loginUser = async (req: Request, res: Response) => {
@@ -43,8 +35,8 @@ export const loginUser = async (req: Request, res: Response) => {
     }
 
     if (user && passwordMatch) {
-      generateJwtToken(user._id, res);
-      return res.status(203).json(user);
+      const token = generateJwtToken(user._id);
+      return res.status(203).json({ user, token });
     } else {
       return res.status(403).json({
         message: "Invalid Credentials",
@@ -84,7 +76,6 @@ export const registerUser = async (req: Request, res: Response) => {
     });
 
     if (user) {
-      generateJwtToken(user._id, res);
       await user.save();
       res.status(203).json(user);
     }
