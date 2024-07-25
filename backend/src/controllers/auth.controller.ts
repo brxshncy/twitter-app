@@ -2,10 +2,21 @@ import { Request, Response } from "express";
 import User from "../models/user.model";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
-export const generateJwtToken = (id: string) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET as string, {
+export const generateJwtToken = (
+  id: mongoose.Types.ObjectId,
+  res: Response
+) => {
+  const token = jwt.sign({ id }, process.env.JWT_SECRET as string, {
     expiresIn: "30d",
+  });
+
+  res.cookie("jwt", token, {
+    maxAge: (15 * 24 * 60) & (60 * 1000),
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.NODe_ENV !== "development",
   });
 };
 
@@ -32,10 +43,8 @@ export const loginUser = async (req: Request, res: Response) => {
     }
 
     if (user && passwordMatch) {
-      return res.status(203).json({
-        user,
-        token: generateJwtToken(user._id),
-      });
+      generateJwtToken(user._id, res);
+      return res.status(203).json(user);
     } else {
       return res.status(403).json({
         message: "Invalid Credentials",
@@ -74,8 +83,37 @@ export const registerUser = async (req: Request, res: Response) => {
       profileImageUrl,
     });
 
-    await user.save();
-    res.status(203).json(user);
+    if (user) {
+      generateJwtToken(user._id, res);
+      await user.save();
+      res.status(203).json(user);
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: "Something went wrong!",
+    });
+  }
+};
+
+export const logout = async (req: Request, res: Response) => {
+  try {
+    res.cookie("jwt", { maxAge: 0 });
+    res.status(200).json({
+      message: "Log out successfully!",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: "Something went wrong!",
+    });
+  }
+};
+
+export const getMe = async (req: Request, res: Response) => {
+  try {
+    const user = await User.findById(req.user.id);
+    return res.status(200).json(user);
   } catch (error) {
     console.log(error);
     res.status(500).json({
