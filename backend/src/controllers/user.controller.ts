@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import User from "../models/user.model";
 import mongoose from "mongoose";
 import { Notification } from "../models/notification.model";
+import bcrypt from "bcryptjs";
 
 export const getUserProfile = async (req: Request, res: Response) => {
   try {
@@ -122,63 +123,65 @@ export const toggleFollowUser = async (req: Request, res: Response) => {
     res.status(500).json({ error: error.message });
   }
 };
-// export const toggleFollowUser = async (req: Request, res: Response) => {
-//   try {
-//     const { id } = req.params;
 
-//     const userToFollow = await User.findById(id);
-//     const currentUser = await User.findById(req.user._id);
-//     const ObjectId = mongoose.Types.ObjectId;
-//     if (new ObjectId(id).equals(req.user._id)) {
-//       return res.status(400).json({
-//         error: "You can't follow/unfollow yourself",
-//       });
-//     }
+export const updateUserProfile = async (req: Request, res: Response) => {
+  try {
+    const { name, email, username, currentPassword, newPassword, bio } =
+      req.body;
+    let { profileImageUrl, coverImageUrl } = req.body;
 
-//     if (!userToFollow || !currentUser)
-//       return res.status(404).json({
-//         error: "User not found",
-//       });
+    const currentUser = await User.findById({
+      id: req.user._id,
+    });
 
-//     const isFollowing = currentUser.following.includes(new ObjectId(id));
+    if (!currentUser) {
+      return res.status(404).json({
+        error: `User with username of ${req.params.username} not found!`,
+      });
+    }
 
-//     if (isFollowing) {
-//       await User.findByIdAndUpdate(id, {
-//         $pull: { followers: req.user._id },
-//       });
+    if (
+      (!newPassword && currentPassword) ||
+      (!currentPassword && newPassword)
+    ) {
+      return res.status(400).json({
+        error: "Please provide both current password and new password",
+      });
+    }
 
-//       await User.findByIdAndUpdate(req.user._id, {
-//         $pull: { following: id },
-//       });
+    if (newPassword && currentPassword) {
+      const isMatch = await bcrypt.compare(
+        currentPassword,
+        currentUser.password
+      );
 
-//       res.status(200).json({
-//         message: "User unfollowed successfully!",
-//       });
-//     } else {
-//       await User.findByIdAndUpdate(id, {
-//         $push: { followers: req.user._id },
-//       });
-//       await User.findByIdAndUpdate(req.user._id, {
-//         $push: { following: id },
-//       });
+      if (!isMatch) {
+        return res.status(400).json({
+          error: "Current password is incorrect",
+        });
+      }
 
-//       const newNotification = new Notification({
-//         type: "follow",
-//         from: req.user._id,
-//         to: userToFollow._id,
-//       });
+      const salt = await bcrypt.genSalt(10);
 
-//       await newNotification.save();
-//       res.status(200).json({
-//         message: "User followed successfully!",
-//       });
-//     }
-//   } catch (error: any) {
-//     console.log("Error In toggleFollowUser", error);
-//     res.status(500).json({
-//       error: error.message,
-//     });
-//   }
-// };
+      currentUser.password = await bcrypt.hash(newPassword, salt);
+    }
 
-export const updateUserProfile = async (req: Request, res: Response) => {};
+    if (profileImageUrl) {
+      currentUser.profileImageUrl = profileImageUrl;
+    }
+
+    if (coverImageUrl) {
+      currentUser.coverImageUrl = coverImageUrl;
+    }
+
+    currentUser.name = name;
+    currentUser.email = email;
+    currentUser.username = username;
+    currentUser.bio = bio;
+
+    await currentUser.save();
+  } catch (error: any) {
+    console.log("Error In updateUserProfile", error);
+    res.status(500).json({ error: error.message });
+  }
+};
