@@ -6,7 +6,7 @@ import { connectDb } from "./config/db.config";
 import authRouter from "./routes/auth.route";
 import tweetRoute from "./routes/tweet.route";
 import userRoutes from "./routes/user.route";
-import { enableCloudinary } from "./utils/cloudinary";
+import { enableCloudinary } from "./config/cloudinary.config";
 
 const app = express();
 

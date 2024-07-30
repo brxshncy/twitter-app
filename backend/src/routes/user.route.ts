@@ -13,11 +13,14 @@ const userRoutes = express.Router();
 userRoutes.get("/profile/:id", protectedRoute, getUserProfile);
 userRoutes.get("/suggested", protectedRoute, getSuggestedUsers);
 userRoutes.post("/follow/:id", protectedRoute, toggleFollowUser);
-userRoutes.post(
+userRoutes.put(
   "/update",
   protectedRoute,
-  upload.single("profileImageUrl"),
-  upload.single("coverImageUrl"),
+  upload.fields([
+    { name: "profileImageUrl", maxCount: 1 },
+    { name: "coverImageUrl", maxCount: 1 },
+  ]),
+  //@ts-ignore
   updateUserProfile
 );
 

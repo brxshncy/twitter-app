@@ -3,6 +3,7 @@ import User from "../models/user.model";
 import mongoose from "mongoose";
 import { Notification } from "../models/notification.model";
 import bcrypt from "bcryptjs";
+import { uploadImageToCloudinary } from "../utils/cloudinary";
 
 export const getUserProfile = async (req: Request, res: Response) => {
   try {
@@ -128,11 +129,20 @@ export const updateUserProfile = async (req: Request, res: Response) => {
   try {
     const { name, email, username, currentPassword, newPassword, bio } =
       req.body;
-    let { profileImageUrl, coverImageUrl } = req.body;
+    let profileImageFile;
+    let coverImageFile;
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
-    const currentUser = await User.findById({
-      id: req.user._id,
-    });
+    if (files) {
+      profileImageFile = files["profileImageUrl"]
+        ? files["profileImageUrl"][0]
+        : null;
+      coverImageFile = files["coverImageUrl"]
+        ? files["coverImageUrl"][0]
+        : null;
+    }
+
+    const currentUser = await User.findById(req.user._id);
 
     if (!currentUser) {
       return res.status(404).json({
@@ -166,12 +176,18 @@ export const updateUserProfile = async (req: Request, res: Response) => {
       currentUser.password = await bcrypt.hash(newPassword, salt);
     }
 
-    if (profileImageUrl) {
-      currentUser.profileImageUrl = profileImageUrl;
+    if (profileImageFile) {
+      const cloudinaryProfileImageUrl = await uploadImageToCloudinary(
+        profileImageFile
+      );
+      currentUser.profileImageUrl = cloudinaryProfileImageUrl;
     }
 
-    if (coverImageUrl) {
-      currentUser.coverImageUrl = coverImageUrl;
+    if (coverImageFile) {
+      const cloudinaryCoverImageUrl = await uploadImageToCloudinary(
+        coverImageFile
+      );
+      currentUser.coverImageUrl = cloudinaryCoverImageUrl;
     }
 
     currentUser.name = name;
@@ -180,6 +196,7 @@ export const updateUserProfile = async (req: Request, res: Response) => {
     currentUser.bio = bio;
 
     await currentUser.save();
+    return res.status(200).json(currentUser);
   } catch (error: any) {
     console.log("Error In updateUserProfile", error);
     res.status(500).json({ error: error.message });
