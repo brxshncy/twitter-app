@@ -13,3 +13,9 @@ export const uploadImageToCloudinary = async (
 export const destroyImageCloudinary = async (imageUrlId: string) => {
   await cloudinary.v2.uploader.destroy(imageUrlId);
 };
+
+export const cloudinaryImageIdExtracter = (imageUrl: string) => {
+  const imageId = imageUrl?.split("/").pop()?.split(".")[0] as string;
+
+  return imageId;
+};

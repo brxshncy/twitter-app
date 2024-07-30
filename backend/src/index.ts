@@ -7,6 +7,7 @@ import authRouter from "./routes/auth.route";
 import tweetRoute from "./routes/tweet.route";
 import userRoutes from "./routes/user.route";
 import { enableCloudinary } from "./config/cloudinary.config";
+import postRouter from "./routes/post.route";
 
 const app = express();
 
@@ -21,6 +22,7 @@ const PORT = process.env.PORT;
 app.use("/api/auth", authRouter);
 app.use("/api/tweet", tweetRoute);
 app.use("/api/user", userRoutes);
+app.use("/api/post", postRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running at port: ${PORT}`);

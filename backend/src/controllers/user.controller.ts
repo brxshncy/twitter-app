@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import { Notification } from "../models/notification.model";
 import bcrypt from "bcryptjs";
 import {
+  cloudinaryImageIdExtracter,
   destroyImageCloudinary,
   uploadImageToCloudinary,
 } from "../utils/cloudinary";
@@ -181,10 +182,9 @@ export const updateUserProfile = async (req: Request, res: Response) => {
 
     if (profileImageFile) {
       if (currentUser.profileImageUrl) {
-        const profileImageId = currentUser.profileImageUrl
-          ?.split("/")
-          .pop()
-          ?.split(".")[0] as string;
+        const profileImageId = cloudinaryImageIdExtracter(
+          currentUser.profileImageUrl
+        );
 
         await destroyImageCloudinary(profileImageId);
       }
@@ -196,10 +196,10 @@ export const updateUserProfile = async (req: Request, res: Response) => {
 
     if (coverImageFile) {
       if (currentUser.coverImageUrl) {
-        const coverImageId = currentUser.coverImageUrl
-          ?.split("/")
-          .pop()
-          ?.split(".")[0] as string;
+        const coverImageId = cloudinaryImageIdExtracter(
+          currentUser.coverImageUrl
+        );
+
         await destroyImageCloudinary(coverImageId);
       }
       const cloudinaryCoverImageUrl = await uploadImageToCloudinary(
