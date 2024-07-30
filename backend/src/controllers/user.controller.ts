@@ -3,7 +3,10 @@ import User from "../models/user.model";
 import mongoose from "mongoose";
 import { Notification } from "../models/notification.model";
 import bcrypt from "bcryptjs";
-import { uploadImageToCloudinary } from "../utils/cloudinary";
+import {
+  destroyImageCloudinary,
+  uploadImageToCloudinary,
+} from "../utils/cloudinary";
 
 export const getUserProfile = async (req: Request, res: Response) => {
   try {
@@ -177,6 +180,14 @@ export const updateUserProfile = async (req: Request, res: Response) => {
     }
 
     if (profileImageFile) {
+      if (currentUser.profileImageUrl) {
+        const profileImageId = currentUser.profileImageUrl
+          ?.split("/")
+          .pop()
+          ?.split(".")[0] as string;
+
+        await destroyImageCloudinary(profileImageId);
+      }
       const cloudinaryProfileImageUrl = await uploadImageToCloudinary(
         profileImageFile
       );
@@ -184,6 +195,13 @@ export const updateUserProfile = async (req: Request, res: Response) => {
     }
 
     if (coverImageFile) {
+      if (currentUser.coverImageUrl) {
+        const coverImageId = currentUser.coverImageUrl
+          ?.split("/")
+          .pop()
+          ?.split(".")[0] as string;
+        await destroyImageCloudinary(coverImageId);
+      }
       const cloudinaryCoverImageUrl = await uploadImageToCloudinary(
         coverImageFile
       );

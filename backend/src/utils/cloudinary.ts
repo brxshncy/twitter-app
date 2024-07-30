@@ -9,3 +9,7 @@ export const uploadImageToCloudinary = async (
 
   return uploadResponse.url;
 };
+
+export const destroyImageCloudinary = async (imageUrlId: string) => {
+  await cloudinary.v2.uploader.destroy(imageUrlId);
+};
