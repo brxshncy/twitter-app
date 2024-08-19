@@ -2,6 +2,12 @@ import { Request, Response } from "express";
 import User, { IUser } from "../models/user.model";
 import mongoose from "mongoose";
 import Notification from "../models/notification.model";
+import bcrypt from "bcryptjs";
+import {
+    cloudinaryImageIdExtracter,
+    destroyImageCloudinary,
+    uploadImageToCloudinary,
+} from "../utils/cloudinary";
 
 export const getUserProfile = async (req: Request, res: Response) => {
     try {
@@ -47,7 +53,9 @@ export const getSuggestedUser = async (req: Request, res: Response) => {
 
 export const followUnfollowUser = async (req: Request, res: Response) => {
     try {
+        // Get me
         const me = (await User.findById(req.user._id)) as IUser;
+        // Get User to follow
         const toFollowUserId = req.params.id;
         const userToFollow = (await User.findById(toFollowUserId)) as IUser;
         const ObjectId = mongoose.Types.ObjectId;
@@ -57,7 +65,7 @@ export const followUnfollowUser = async (req: Request, res: Response) => {
                 message: "User to follow not found",
             });
         }
-
+        // Check if user followed is me.
         if (new ObjectId(toFollowUserId).equals(me._id)) {
             return res.status(403).json({
                 message: "You cannot follow/unfollow yourself",
@@ -70,6 +78,7 @@ export const followUnfollowUser = async (req: Request, res: Response) => {
             });
         }
 
+        // Check if me is already following the user
         const isFollowing = me.following.includes(userToFollow._id);
 
         if (isFollowing) {
@@ -96,6 +105,7 @@ export const followUnfollowUser = async (req: Request, res: Response) => {
                 $push: { following: userToFollow._id },
             });
 
+            // Add notification
             const newNotifcation = new Notification({
                 type: "follow",
                 from: me._id,
@@ -109,4 +119,92 @@ export const followUnfollowUser = async (req: Request, res: Response) => {
             });
         }
     } catch (error) {}
+};
+
+export const updateUserProfile = async (req: Request, res: Response) => {
+    try {
+        // Extract body req
+        const { name, email, username, currentPassword, newPassword, bio } =
+            req.body;
+
+        let profileImageFile;
+        let coverImageFile;
+
+        const files = req.files as {
+            [fieldname: string]: Express.Multer.File[];
+        };
+
+        if (files) {
+            profileImageFile = files["profileImageUrl"]
+                ? files["profileImageUrl"][0]
+                : null;
+            coverImageFile = files["coverImageUrl"]
+                ? files["coverImageUrl"][0]
+                : null;
+        }
+
+        const me = await User.findById(req.user._id);
+        console.log("me >", req.body);
+        if (!me) {
+            return res.status(404).json({
+                message: "User not found!",
+            });
+        }
+
+        if (
+            (!newPassword && currentPassword) ||
+            (!currentPassword && newPassword)
+        ) {
+            return res.status(403).json({
+                message: "Please provide both current and new password",
+            });
+        }
+        // Update user password logic
+        if (newPassword && currentPassword) {
+            const isMatch = await bcrypt.compare(me.password, currentPassword);
+
+            if (!isMatch) {
+                return res.status(403).json({
+                    message: "Current password is incorrect!",
+                });
+            }
+            const salt = await bcrypt.genSalt(10);
+            const newHashedPassword = await bcrypt.hash(newPassword, salt);
+            me.password = newHashedPassword;
+        }
+
+        if (profileImageFile) {
+            if (me.profileImageUrl) {
+                const imgId = cloudinaryImageIdExtracter(me.profileImageUrl);
+                await destroyImageCloudinary(imgId);
+            }
+
+            const cdnProfImageUrl = await uploadImageToCloudinary(
+                profileImageFile as Express.Multer.File
+            );
+            me.profileImageUrl = cdnProfImageUrl;
+        }
+
+        if (coverImageFile) {
+            if (me.coverImageUrl) {
+                const imgId = cloudinaryImageIdExtracter(me.coverImageUrl);
+                await destroyImageCloudinary(imgId);
+            }
+            const cdnCoverImageUrl = await uploadImageToCloudinary(
+                coverImageFile as Express.Multer.File
+            );
+            me.coverImageUrl = cdnCoverImageUrl;
+        }
+
+        me.name = name;
+        me.email = email;
+        me.username = username;
+        me.bio = bio;
+
+        await me.save();
+        return res.status(200).json(me);
+    } catch (error: any) {
+        console.log("Error In updateUserProfile", error);
+        res.status(500).json({ error: error.message });
+    }
 };
