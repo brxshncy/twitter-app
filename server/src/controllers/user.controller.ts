@@ -144,7 +144,6 @@ export const updateUserProfile = async (req: Request, res: Response) => {
         }
 
         const me = await User.findById(req.user._id);
-        console.log("me >", req.body);
         if (!me) {
             return res.status(404).json({
                 message: "User not found!",
