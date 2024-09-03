@@ -1,6 +1,19 @@
-import mongoose from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
 
-const userSchema = new mongoose.Schema(
+export interface IUser extends Document {
+    name: string;
+    email: string;
+    username: string;
+    password: string;
+    profileImageUrl?: string | null; // optional with a default value of null
+    _id: mongoose.Types.ObjectId; // updated to mongoose.Types.ObjectId
+    followers: mongoose.Types.ObjectId[]; // array of ObjectId
+    following: mongoose.Types.ObjectId[]; // array of ObjectId
+    coverImageUrl?: string | null;
+    bio?: string | null;
+}
+
+const userSchema: Schema<IUser> = new mongoose.Schema(
     {
         name: {
             type: String,
